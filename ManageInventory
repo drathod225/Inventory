@@ -1,0 +1,678 @@
+CREATE TABLE Products (
+  ProductId INT IDENTITY(1, 1) PRIMARY KEY, 
+  ProductName VARCHAR(30), 
+  ProductDescription VARCHAR(50),
+  ProductSku VARCHAR(50) 
+);
+CREATE NONCLUSTERED INDEX IDX_Products_ProductSku ON Products (ProductSku);
+
+-- For product table history  
+CREATE TABLE TrgProducts (
+  AuditType VARCHAR(10),
+  ProductId INT, 
+  ProductName VARCHAR(30), 
+  ProductDescription VARCHAR(50),
+  ProductSku VARCHAR(50) 
+);
+
+INSERT INTO Products (ProductName, ProductDescription,ProductSku) 
+VALUES 
+  ('Rug', 'A cool rug','p1'), 
+  ('Cup', 'A coffee cup','p2') 
+
+-- Product attributes  
+CREATE TABLE Variants (
+    VariantId INT IDENTITY(1,1) PRIMARY KEY, 
+    Variant VARCHAR(50)
+);
+
+INSERT INTO Variants (variant) 
+VALUES 
+  ('Color'), 
+  ('Size'), 
+  ('Material') 
+
+-- Attributes value  
+CREATE TABLE VariantValue(
+    VariantValueId INT IDENTITY(1, 1) PRIMARY KEY, 
+    VariantId INT, 
+    Variantvalue VARCHAR(50),
+	IsActive BIT DEFAULT(0)
+  );
+ALTER TABLE VariantValue ADD CONSTRAINT FK_VariantValue_Variants_VariantId FOREIGN KEY (VariantId) REFERENCES dbo.Variants(VariantId)
+CREATE NONCLUSTERED INDEX IDX_VariantValue_VariantId ON VariantValue (VariantId);
+
+
+INSERT INTO VariantValue (VariantId, Variantvalue) 
+VALUES 
+  (1, 'Red'), 
+  (1, 'Blue'), 
+  (1, 'Green'), 
+  (2, 'Small'), 
+  (2, 'Medium'), 
+  (2, 'Large'),
+  (3, 'Wool'), 
+  (3, 'Polyester') 
+  
+-- Product Variants (combinations of attributes)
+CREATE TABLE ProductVariants(
+  ProductVariantId INT IDENTITY(1, 1) PRIMARY KEY, 
+  ProductId INT, 
+  VariantSku VARCHAR(50), 
+  Price float
+);
+ALTER TABLE ProductVariants ADD CONSTRAINT FK_ProductVariants_Products_ProductId FOREIGN KEY (ProductId) REFERENCES dbo.Products(ProductId)
+CREATE NONCLUSTERED INDEX IDX_ProductVariants_ProductId ON ProductVariants (ProductId);
+
+--Product variants History 
+CREATE TABLE TrgProductVariants(
+  AuditType VARCHAR(10),
+  ProductVariantId INT, 
+  ProductId INT, 
+  VariantSku VARCHAR(50), 
+  Price float
+);
+
+INSERT INTO ProductVariants(
+  ProductId,VariantSku,Price
+) 
+VALUES 
+  (1,'a121', 50),
+  (1,'a122', 50),
+  (2,'b121', 50)
+   
+-- Product variant attribute values
+CREATE TABLE ProductVariantsDetail(
+  ProductVariantId INT, 
+  VariantValueId INT
+);
+ALTER TABLE ProductVariantsDetail ADD CONSTRAINT FK_ProductVariantsDetail_ProductVariants_ProductVariantId FOREIGN KEY (ProductVariantId) REFERENCES dbo.ProductVariants(ProductVariantId)
+ALTER TABLE ProductVariantsDetail ADD CONSTRAINT FK_ProductVariantsDetail_VariantValue_VariantValueId FOREIGN KEY (VariantValueId) REFERENCES dbo.VariantValue(VariantValueId)
+
+INSERT INTO ProductVariantsDetail(ProductVariantId, VariantValueId) 
+VALUES 
+  (1, 1), 
+  (1, 4);
+
+INSERT INTO ProductVariantsDetail(ProductVariantId, VariantValueId) 
+VALUES 
+  (2, 1), 
+  (2, 5);
+
+INSERT INTO ProductVariantsDetail(ProductVariantId, VariantValueId) 
+VALUES 
+  (3, 1) 
+  
+
+CREATE TABLE Users
+(
+	UserId INT IDENTITY(1,1) PRIMARY KEY,
+	UserName NVARCHAR(50),
+	EmailId VARCHAR(50),
+	CreateDate DateTime,
+	ModifiedDate DateTime,
+	CreatedBy INT,
+	UpdatedBy INT
+)
+ALTER TABLE Users ADD CONSTRAINT UK_Users_EmailId UNIQUE (EmailId);
+ALTER TABLE Users ADD CONSTRAINT UK_Users_UserName UNIQUE (UserName);
+
+CREATE Table Cart
+(
+	CartId INT IDENTITY(1,1) PRIMARY KEY,
+	SessionId uniqueidentifier,
+	UserId INT,
+	CartTotal Float
+)
+ALTER TABLE Cart ADD CONSTRAINT FK_Cart_Users_UserId FOREIGN KEY (UserId) REFERENCES dbo.Users(UserId)
+
+CREATE TABLE CartItems
+(
+	CartItemId INT IDENTITY(1,1) PRIMARY KEY,
+	CartId INT,
+	ProductVariantId INT,
+	ProductId INT,
+	Quantity INT,
+	Price FLOAT,
+	IteamTotal FLOAT
+)
+ALTER TABLE CartItems ADD CONSTRAINT FK_CartItems_Cart_CartId FOREIGN KEY (CartId) REFERENCES dbo.Cart(CartId)
+ALTER TABLE CartItems ADD CONSTRAINT FK_CartItems_ProductVariants_ProductVariantId FOREIGN KEY (ProductVariantId) REFERENCES ProductVariants(ProductVariantId)
+ALTER TABLE CartItems ADD CONSTRAINT FK_CartItems_Products_ProductId FOREIGN KEY (ProductId) REFERENCES dbo.Products(ProductId)
+CREATE NONCLUSTERED INDEX IDX_CartItems_CartId ON CartItems (CartId);
+CREATE NONCLUSTERED INDEX IDX_CartItems_ProductId ON CartItems (ProductId);
+
+CREATE TABLE CartItemsVariantsDetail
+(
+	CartItemId INT,
+	VariantValueId INT
+)
+ALTER TABLE CartItemsVariantsDetail ADD CONSTRAINT FK_CartItemsVariantsDetail_CartItems_CartItemId FOREIGN KEY (CartItemId) REFERENCES dbo.CartItems(CartItemId)
+ALTER TABLE CartItemsVariantsDetail ADD CONSTRAINT FK_CartItemsVariantsDetail_VariantValue_VariantValueId FOREIGN KEY (VariantValueId) REFERENCES dbo.VariantValue(VariantValueId)
+
+
+CREATE TABLE Orders 
+(
+	OrderId INT IDENTITY(1,1) PRIMARY KEY,
+	CreatedDateTime DateTime DEFAULT(GETDATE()),
+	OrderTotal FLOAT,
+	UserId INT,
+	SessionId uniqueidentifier,
+)
+ALTER TABLE Orders ADD CONSTRAINT FK_Orders_Users_UserId FOREIGN KEY (UserId) REFERENCES dbo.Users(UserId)
+
+CREATE TABLE OrderItems
+(
+	OrderItemId INT IDENTITY(1,1) PRIMARY KEY,
+	OrderId INT,
+	ProductId INT,
+	ProductVariantId INT,
+	Quantity INT,
+	Price FLOAT,
+	IteamTotal FLOAT
+)
+
+ALTER TABLE OrderItems ADD CONSTRAINT FK_OrderItems_Orders_OrderId FOREIGN KEY (OrderId) REFERENCES dbo.Orders(OrderId)
+ALTER TABLE OrderItems ADD CONSTRAINT FK_OrderItems_ProductVariants_ProductVariantId FOREIGN KEY (ProductVariantId) REFERENCES ProductVariants(ProductVariantId)
+ALTER TABLE OrderItems ADD CONSTRAINT FK_OrderItems_Products_ProductId FOREIGN KEY (ProductId) REFERENCES dbo.Products(ProductId)
+CREATE NONCLUSTERED INDEX IDX_OrderItems_ProductId ON OrderItems (ProductId);
+CREATE NONCLUSTERED INDEX IDX_OrderItems_OrderId ON OrderItems (OrderId);
+
+CREATE TABLE OrderItemsVariantsDetail
+(
+	OrderItemId INT,
+	VariantValueId INT
+)
+ALTER TABLE OrderItemsVariantsDetail ADD CONSTRAINT FK_OrderItemsVariantsDetail_OrderItems_OrderItemId FOREIGN KEY (OrderItemId) REFERENCES dbo.OrderItems(OrderItemId)
+ALTER TABLE OrderItemsVariantsDetail ADD CONSTRAINT FK_OrderItemsVariantsDetail_VariantValue_VariantValueId FOREIGN KEY (VariantValueId) REFERENCES dbo.VariantValue(VariantValueId)
+
+GO
+CREATE TYPE [dbo].[BulkProductUpload] AS TABLE(
+	[ProductName] [varchar](30) NULL,
+	[ProductDescription] [varchar](50) NULL,
+	[ProductSku] [varchar](50) NULL,
+	[VariantSku] [varchar](50) NULL,
+	[Price] [float] NULL,
+	[Variant] [varchar](50) NULL,
+	[VariantValue] [varchar](50) NULL
+)
+GO
+
+CREATE TYPE [dbo].[CartItems] AS TABLE(
+	[ProductId] [int] NULL,
+	[ProductVariantId] [int] NULL,
+	[Quantity] [int] NULL,
+	[Price] [float] NULL,
+	[IteamTotal]  AS ([Quantity]*[Price]),
+	[Variant] [varchar](50) NULL,
+	[VariantValue] [varchar](50) NULL
+)
+GO
+
+CREATE TYPE [dbo].[ProductVariants] AS TABLE(
+	[RowId] [int] IDENTITY(1,1) NOT NULL,
+	[VariantSku] [varchar](50) NULL,
+	[Price] [float] NULL,
+	[Variant] [varchar](50) NULL,
+	[VariantValue] [varchar](50) NULL,
+	PRIMARY KEY CLUSTERED 
+(
+	[RowId] ASC
+)WITH (IGNORE_DUP_KEY = OFF)
+)
+GO
+
+--------------------------------------------------------------------------------------------------------------------
+-- Create new/update cart 
+--------------------------------------------------------------------------------------------------------------------
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[usp_ManageCart]
+  @SessionId uniqueidentifier,
+  @UserId INT,
+  @CartItems  dbo.CartItems READONLY
+AS
+BEGIN
+
+	SET NOCOUNT ON;
+	
+	DECLARE @CartId INT = 0
+	
+	SELECT @CartId=c.CartId 
+	FROM Cart c 
+	WHERE c.UserId = @UserId AND c.SessionId = @SessionId
+
+	-- Create new cart entry if not exists.
+	IF @CartId=0
+	BEGIN
+		INSERT INTO Cart (UserId,SessionId)
+		VALUES(@UserId,@SessionId)
+		SET @CartId = SCOPE_IDENTITY();
+	END
+
+	
+	IF EXISTS (SELECT 1 from @CartItems)
+	BEGIN
+	
+		-- We will delete all the existing cartitems and attributes value if cart alredy exists then add new entries. 
+		-- Delete all cart attributes value
+		DELETE civd FROM Cart c
+		INNER JOIN CartItems ci on c.CartId=ci.CartId
+		INNER JOIN CartItemsVariantsDetail civd on civd.CartItemId = ci.CartItemId
+		WHERE c.CartId = @CartId
+
+		-- Delete all cart items
+		DELETE ci FROM Cart c
+		INNER JOIN CartItems ci on c.CartId=ci.CartId
+		WHERE c.CartId = @CartId
+
+		-- Insert all cart items
+		INSERT INTO CartItems 
+		(
+			CartId,
+			ProductId,
+			ProductVariantId,
+			Quantity,
+			IteamTotal,
+			Price
+		)
+		SELECT DISTINCT 
+				@CartId,
+				tci.ProductId,
+				tci.ProductVariantId,
+				tci.Quantity,
+				tci.IteamTotal,
+				tci.Price
+		FROM @CartItems tci
+
+		-- Add cart items attribute value
+		INSERT INTO ProductVariantsDetail
+		(
+			ProductVariantId,
+			VariantValueId
+		)
+		SELECT ci.CartItemId,vv.VariantValueId
+		FROM @CartItems tci 
+			INNER JOIN CartItems ci on ci.ProductId=tci.ProductId AND ci.ProductVariantId=tci.ProductVariantId
+			INNER JOIN Variants v on tci.Variant = v.Variant
+			INNER JOIN VariantValue vv on v.VariantId=vv.VariantId AND vv.Variantvalue = tci.VariantValue
+		WHERE ci.CartId = @CartId
+			
+
+	END
+	
+END
+
+GO
+--------------------------------------------------------------------------------------------------------------------
+-- Add new order
+--------------------------------------------------------------------------------------------------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER     PROCEDURE [dbo].[usp_AddOrder]
+    @CartId  INT
+AS
+BEGIN
+
+	SET NOCOUNT ON;
+	
+	DECLARE @OrderId INT
+
+	INSERT INTO Orders
+	(
+		UserId,
+		SessionId,
+		OrderTotal )
+	SELECT 
+		c.UserId,
+		c.SessionId,
+		c.CartTotal 
+	FROM Cart c where c.CartId = @CartId
+	
+	SET @OrderId = SCOPE_IDENTITY()
+
+	INSERT INTO OrderItems
+	(
+		OrderId,
+		ProductId,
+		ProductVariantId,
+		Quantity,
+		Price,
+		IteamTotal
+	)
+	SELECT 
+		@OrderId,
+		ci.ProductId,
+		ci.ProductVariantId,
+		ci.Quantity,
+		ci.Price,
+		ci.IteamTotal 
+	FROM Cart c 
+	INNER JOIN CartItems ci on c.CartId=ci.CartId
+	WHERE c.CartId = @CartId
+
+
+	INSERT INTO OrderItemsVariantsDetail
+	(
+		OrderItemId,
+		VariantValueId
+	)
+	SELECT 
+		oi.OrderItemId,
+		civd.VariantValueId
+	FROM Cart c 
+	INNER JOIN CartItems ci on c.CartId=ci.CartId
+	INNER JOIN CartItemsVariantsDetail civd ON civd.CartItemId = ci.CartItemId
+	INNER JOIN OrderItems oi on oi.ProductId=ci.ProductId AND oi.ProductVariantId=ci.ProductVariantId AND oi.OrderId = @OrderId
+	WHERE c.CartId = @CartId
+
+	-- Delete from cart tables after order create. 
+	DELETE civd
+	FROM Cart c 
+	INNER JOIN CartItems ci on c.CartId=ci.CartId
+	INNER JOIN CartItemsVariantsDetail civd ON civd.CartItemId = ci.CartItemId
+	WHERE c.CartId = @CartId
+	
+	DELETE ci
+	FROM Cart c 
+	INNER JOIN CartItems ci on c.CartId=ci.CartId
+	WHERE c.CartId = @CartId
+
+	DELETE FROM Cart WHERE CartId = @CartId
+   
+END
+GO
+----------------------------------------------------------------------------------------------------------
+--Add/Update product
+----------------------------------------------------------------------------------------------------------
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER   PROCEDURE [dbo].[usp_ManageProduct]
+  @ProductName VARCHAR(30), 
+  @ProductDescription VARCHAR(50),
+  @ProductSku VARCHAR(50),
+  @ProductVariants  dbo.ProductVariants READONLY
+AS
+BEGIN
+
+	SET NOCOUNT ON;
+	
+	DECLARE @ProductId INT = 0
+	SELECT @ProductId=p.ProductId from Products p where p.ProductSku = @ProductSku
+
+	-- Update product information or create new.
+	IF @ProductId>0
+	BEGIN
+		UPDATE Products SET 
+			ProductDescription=@ProductDescription,
+			ProductName = @ProductName
+		WHERE ProductId=@ProductId
+	END
+	ELSE
+	BEGIN
+		INSERT INTO Products
+		(	
+			ProductName,ProductSku,ProductDescription
+		)
+		VALUES(@ProductName,@ProductSku,@ProductDescription)
+		SET @ProductId = SCOPE_IDENTITY()
+	END
+
+	IF EXISTS (SELECT 1 from @ProductVariants)
+	BEGIN
+
+		-- Update variant price if variant exists. 
+		UPDATE pv SET 
+			pv.Price=ppv.Price 
+		FROM @ProductVariants ppv
+		INNER JOIN ProductVariants pv on pv.VariantSku=ppv.VariantSku
+
+		-- Create new variants
+		INSERT INTO ProductVariants
+		(
+			ProductId,
+			VariantSku,
+			Price
+		)
+		SELECT 
+			DISTINCT @ProductId,
+			ppv.VariantSku,
+			ppv.Price 
+		FROM @ProductVariants ppv 
+		WHERE 
+		NOT EXISTS (SELECT 1 FROM ProductVariants pv where pv.VariantSku=ppv.VariantSku)
+		
+		-- Delete all variant's attributes/metadata 
+		DELETE pvd
+		 FROM @ProductVariants ppv 
+			INNER JOIN ProductVariants pv on ppv.VariantSku=pv.VariantSku
+			INNER JOIN ProductVariantsDetail pvd on pvd.ProductVariantId=pv.ProductVariantId
+	
+		-- Add new attrirubtes which not available
+		-- i.e. color 
+		INSERT INTO Variants
+		(
+			Variant
+		)
+		SELECT DISTINCT ppv.Variant from @ProductVariants ppv
+		WHERE NOT EXISTS(SELECT 1 FROM Variants v where v.Variant = ppv.Variant)  
+
+		-- Add new attribute value if not exists. 
+		-- i.e. White (For color attribut)
+		INSERT INTO VariantValue
+		(
+			VariantId,
+			Variantvalue
+		)
+		SELECT 
+			DISTINCT v.VariantId,
+			ppv.VariantValue 
+		FROM @ProductVariants ppv
+		INNER JOIN Variants v on v.Variant = ppv.Variant
+		WHERE 
+		NOT EXISTS (SELECT 1 FROM VariantValue vv 
+						WHERE vv.VariantId=v.VariantId AND vv.Variantvalue=ppv.VariantValue)
+
+		-- Insert all variants attributes value					
+		INSERT INTO ProductVariantsDetail
+		(
+			ProductVariantId,
+			VariantValueId
+		)
+		SELECT pv.ProductVariantId,vv.VariantValueId
+		FROM @ProductVariants ppv 
+			INNER JOIN ProductVariants pv on ppv.VariantSku=pv.VariantSku
+			INNER JOIN Variants v on ppv.Variant = v.Variant
+			INNER JOIN VariantValue vv on v.VariantId=vv.VariantId AND vv.Variantvalue = ppv.VariantValue
+
+	END
+	
+END
+
+----------------------------------------------------------------------------------------------------------
+-- Bulk add/update products
+----------------------------------------------------------------------------------------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER   PROCEDURE [dbo].[usp_UploadProducts]
+  @BulkProductUpload  dbo.BulkProductUpload READONLY
+AS
+BEGIN
+
+	SET NOCOUNT ON;
+	
+	DECLARE @RowId INT = 1
+	DECLARE @TotalRows INT
+	DECLARE @ProductName VARCHAR(30)
+	DECLARE @ProductDescription VARCHAR(50)
+	DECLARE @ProductSku VARCHAR(50)
+	DECLARE @ProductVariants  dbo.ProductVariants
+	
+	-- Create temp table to store all products SKU and other information.
+	-- Use this table to iterate loop to call manage product stored procedure. 
+	CREATE TABLE #tmpProducts
+	(
+		 RowId INT IDENTITY(1,1) PRIMARY KEY,
+		 ProductName VARCHAR(30), 
+		 ProductDescription VARCHAR(50),
+		 ProductSku VARCHAR(50),
+  	)
+	
+	INSERT INTO #tmpProducts
+	SELECT DISTINCT  
+		 ProductName ,	
+		 ProductDescription ,
+		 ProductSku  
+	FROM @BulkProductUpload
+	SET @TotalRows = @@ROWCOUNT
+
+	WHILE @RowId<=@TotalRows
+	BEGIN
+		
+		SELECT 		 
+			@ProductName = ProductName ,	
+			@ProductDescription = ProductDescription ,
+			@ProductSku = ProductSku  
+		FROM #tmpProducts WHERE RowId = @RowId
+
+		INSERT INTO @ProductVariants
+		(
+			VariantSku,
+			Variant,
+			VariantValue,
+			Price
+		)
+		SELECT 
+			bpu.VariantSku,
+			bpu.Variant,
+			bpu.VariantValue,
+			bpu.Price
+		FROM 
+		@BulkProductUpload bpu
+		WHERE ProductSku = @ProductSku
+
+		-- Below stored procedure will add or modify products.
+		EXEC usp_ManageProduct @ProductName,@ProductDescription,@ProductSku,@ProductVariants
+
+		SET @RowId = @RowId + 1 
+		DELETE FROM @ProductVariants
+	END
+		
+END
+----------------------------------------------------------------------------------------------------------
+-- Get order items with paging. 
+----------------------------------------------------------------------------------------------------------
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[usp_GetOrderDetail]
+    @OrderId  INT,
+	@PageNumber INT,
+	@PageSize INT
+AS
+BEGIN
+
+	SET NOCOUNT ON;
+
+	DECLARE @Columns AS NVARCHAR(MAX)
+    DECLARE @str  AS NVARCHAR(MAX)
+	
+	-- Create temp table and store all the order information once for later use. So no need to execute same query again and again.
+	CREATE TABLE #tmpOrderDetail
+	(
+		ProductName VARCHAR(50),
+		Price Float,
+		Quantity INT,
+		CreatedDateTime DateTime,
+		Variant VARCHAR(50),
+		Variantvalue VARCHAR(50),
+		OrderItemId INT
+	)
+	
+	INSERT INTO #tmpOrderDetail
+	(
+		ProductName,
+		Price,
+		Quantity,
+		CreatedDateTime,
+		Variant,
+		Variantvalue,
+		OrderItemId
+	)
+	SELECT 
+		p.ProductName,
+		oi.Price,
+		oi.Quantity [Order Quantity],
+		o.CreatedDateTime,
+		v.Variant,
+		vv.Variantvalue,
+		oi.OrderItemId
+	FROM Orders o
+	INNER JOIN OrderItems oi on o.OrderId = o.OrderId
+	INNER JOIN OrderItemsVariantsDetail oivd on oivd.OrderItemId=oi.OrderItemId
+	INNER JOIN VariantValue vv on vv.VariantValueId=oivd.VariantValueId
+	INNER JOIN Variants v on v.VariantId = vv.VariantId 
+	INNER JOIN Products p on oi.ProductId = p.ProductId
+	WHERE o.OrderId = @OrderId
+	
+	-- Take unique attributes
+	SELECT @Columns =STRING_AGG(QUOTENAME(Variant), ', ') 
+	FROM 
+	(
+		SELECT 
+		DISTINCT tod.Variant 
+		FROM #tmpOrderDetail tod
+	) tmpResut
+	
+	
+
+	set @str = 
+	CONCAT (
+	'SELECT ProductName,
+		   Price,
+		   Quantity,',@Columns,'
+		   ,CreatedDateTime [Order Created DateTIme]
+	FROM 
+	(
+	  	SELECT 
+			ProductName,
+			Price,
+			Quantity,
+			CreatedDateTime,
+			Variant,
+			Variantvalue,
+			OrderItemId
+		FROM #tmpOrderDetail t
+	 
+	) src
+	PIVOT
+	(
+	  MAX(Variantvalue)
+	  FOR Variant in (',@Columns,')
+	) piv
+	ORDER BY piv.OrderItemId
+	OFFSET ',(@PageNumber-1)*@PageSize,' ROWS
+	FETCH NEXT ',@PageSize,' ROWS ONLY ' )
+	
+
+	EXECUTE sp_executesql @str
+
+	-- Retrun total records.
+	SELECT 
+		COUNT(DISTINCT tod.OrderItemId) AS [Total Records] 
+	FROM #tmpOrderDetail tod
+
+	DROP TABLE #tmpOrderDetail
+
+END
